@@ -289,7 +289,11 @@
     "RunOnceActivity.typescript.service.memoryLimit.init": "true",
     "codeWithMe.voiceChat.enabledByDefault": "false",
     "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
+<<<<<<< Updated upstream
     "git-widget-placeholder": "master",
+=======
+    "git-widget-placeholder": "vibe/menu-terminal-drone-644a89",
+>>>>>>> Stashed changes
     "ignore.virus.scanning.warn.message": "true",
     "junie.onboarding.icon.badge.shown": "true",
     "kotlin-language-version-configured": "true",
