@@ -33,8 +33,9 @@ public class StreamManager {
             captureFolder.mkdirs();
         }
         if (toolAvailable("ffmpeg")) {
-            if (hasDevice("sdl")) {
-                spawnViewAndCaptures();
+            String sdlDevice = findDevice("sdl");
+            if (sdlDevice != null) {
+                spawnViewAndCaptures(sdlDevice);
                 return;
             }
             if (toolAvailable("ffplay")) {
@@ -67,11 +68,11 @@ public class StreamManager {
         }
     }
 
-    private void spawnViewAndCaptures() {
+    private void spawnViewAndCaptures(String sdlDevice) {
         try {
             process = new ProcessBuilder(
                     "ffmpeg", "-hide_banner", "-loglevel", "warning", "-i", STREAM_URL,
-                    "-map", "0:v", "-f", "sdl", "Vue drone (q pour fermer)",
+                    "-map", "0:v", "-f", sdlDevice, "Vue drone (q pour fermer)",
                     "-map", "0:v", "-vf", "fps=1/" + intervalSeconds, "-q:v", "2",
                     outputFolder + File.separator + CAPTURE_PREFIX + "%04d.jpg")
                     .inheritIO().start();
@@ -118,17 +119,19 @@ public class StreamManager {
         }
     }
 
-    private boolean hasDevice(String device) {
+    private String findDevice(String device) {
         try {
             Process p = new ProcessBuilder("ffmpeg", "-hide_banner", "-devices").start();
-            boolean found = false;
+            String found = null;
             BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()));
             try {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     String[] parts = line.trim().split("\\s+");
-                    if (parts.length >= 2 && device.equals(parts[1])) {
-                        found = true;
+                    if (parts.length >= 2 && parts[1].equals(device)) {
+                        found = parts[1];
+                    } else if (parts.length >= 2 && device.equals("sdl") && parts[1].startsWith("sdl")) {
+                        found = parts[1];
                     }
                 }
             } finally {
@@ -137,7 +140,7 @@ public class StreamManager {
             p.waitFor();
             return found;
         } catch (Exception e) {
-            return false;
+            return null;
         }
     }
 
