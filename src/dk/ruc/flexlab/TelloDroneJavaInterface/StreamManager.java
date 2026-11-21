@@ -4,6 +4,8 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -33,10 +35,21 @@ public class StreamManager {
             captureFolder.mkdirs();
         }
         if (toolAvailable("ffmpeg")) {
-            String sdlDevice = findDevice("sdl");
-            if (sdlDevice != null) {
-                spawnViewAndCaptures(sdlDevice);
-                return;
+            List<String> candidates = new ArrayList<>();
+            String found = findDevice("sdl");
+            if (found != null) {
+                candidates.add(found);
+            }
+            if (!candidates.contains("sdl2")) {
+                candidates.add("sdl2");
+            }
+            if (!candidates.contains("sdl")) {
+                candidates.add("sdl");
+            }
+            for (String device : candidates) {
+                if (spawnViewAndCaptures(device)) {
+                    return;
+                }
             }
             if (toolAvailable("ffplay")) {
                 System.out.println("[Vue drone] sortie SDL indisponible avec ce ffmpeg : affichage via ffplay, captures automatiques indisponibles.");
@@ -68,7 +81,7 @@ public class StreamManager {
         }
     }
 
-    private void spawnViewAndCaptures(String sdlDevice) {
+    private boolean spawnViewAndCaptures(String sdlDevice) {
         try {
             process = new ProcessBuilder(
                     "ffmpeg", "-hide_banner", "-loglevel", "warning", "-i", STREAM_URL,
@@ -76,11 +89,21 @@ public class StreamManager {
                     "-map", "0:v", "-vf", "fps=1/" + intervalSeconds, "-q:v", "2",
                     outputFolder + File.separator + CAPTURE_PREFIX + "%04d.jpg")
                     .inheritIO().start();
-            System.out.println("[Vue drone] fenêtre live ouverte ; captures toutes les " + intervalSeconds + " s dans " + outputFolder + "/");
+            try {
+                TimeUnit.MILLISECONDS.sleep(1200);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            if (process != null && process.isAlive()) {
+                System.out.println("[Vue drone] fenêtre live ouverte ; captures toutes les " + intervalSeconds + " s dans " + outputFolder + "/");
+                return true;
+            }
+            process = null;
         } catch (Exception e) {
             process = null;
             System.out.println("[Vue drone] impossible de démarrer l'affichage ffmpeg : " + e.getMessage());
         }
+        return false;
     }
 
     private void spawnCapturesOnly() {
