@@ -30,3 +30,6 @@ hs_err_pid*
 out/
 paths/
 grabbedImages/
+
+# Python
+__pycache__/
