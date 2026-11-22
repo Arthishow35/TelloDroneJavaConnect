@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.DatagramSocket;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -22,7 +23,8 @@ public class StreamManager {
 
     private final String outputFolder;
     private final int intervalSeconds;
-    private Process process;
+    private volatile boolean running;
+    private volatile Process process;
 
     public StreamManager(String outputFolder, int intervalSeconds) {
         this.outputFolder = outputFolder;
@@ -30,9 +32,14 @@ public class StreamManager {
     }
 
     public void start() {
+        running = true;
         File captureFolder = new File(outputFolder);
         if (!captureFolder.exists()) {
             captureFolder.mkdirs();
+        }
+        if (!udpPortAvailable(11111)) {
+            System.out.println("[Vue drone] LE PORT 11111 EST DEJA OCCUPE : fermez les autres fenêtres ffplay/ffmpeg et les consoles PowerShell utilisées pour les tests, puis relancez le programme. Une seule application peut lire le flux vidéo.");
+            return;
         }
         if (toolAvailable("ffmpeg")) {
             List<String> candidates = new ArrayList<>();
@@ -48,6 +55,7 @@ public class StreamManager {
             }
             for (String device : candidates) {
                 if (spawnViewAndCaptures(device)) {
+                    startWatcher();
                     return;
                 }
             }
@@ -68,6 +76,7 @@ public class StreamManager {
     }
 
     public void stop() {
+        running = false;
         if (process != null) {
             process.destroy();
             try {
@@ -79,6 +88,25 @@ public class StreamManager {
             }
             process = null;
         }
+    }
+
+    private void startWatcher() {
+        final Process watched = process;
+        Thread watcher = new Thread(() -> {
+            try {
+                watched.waitFor();
+            } catch (InterruptedException e) {
+                return;
+            }
+            if (!running) {
+                return;
+            }
+            System.out.println("[Vue drone] le processus ffmpeg (vue + captures) s'est arr\u00eat\u00e9 inopin\u00e9ment. Cause possible : le port 11111 est d\u00e9j\u00e0 utilis\u00e9 par une autre application (ffplay ou console de test). Bascule en mode captures seules.");
+            process = null;
+            spawnCapturesOnly();
+        });
+        watcher.setDaemon(true);
+        watcher.start();
     }
 
     private boolean spawnViewAndCaptures(String sdlDevice) {
@@ -132,10 +160,29 @@ public class StreamManager {
         }
     }
 
-    private boolean toolAvailable(String tool) {
+    private boolean udpPortAvailable(int port) {
+        DatagramSocket socket = null;
         try {
-            Process p = new ProcessBuilder(tool, "-version").start();
+            socket = new DatagramSocket(port);
+            return true;
+        } catch (Exception e) {
+            return false;
+        } finally {
+            if (socket != null) {
+                socket.close();
+            }
+        }
+    }
+
+    private boolean toolAvailable(String tool) {
+        Process p = null;
+        try {
+            p = new ProcessBuilder(tool, "-version").redirectErrorStream(true).start();
             consumeQuietly(p);
+            if (!p.waitFor(15, TimeUnit.SECONDS)) {
+                p.destroyForcibly();
+                return false;
+            }
             return p.exitValue() == 0;
         } catch (Exception e) {
             return false;
@@ -144,7 +191,7 @@ public class StreamManager {
 
     private String findDevice(String device) {
         try {
-            Process p = new ProcessBuilder("ffmpeg", "-hide_banner", "-devices").start();
+            Process p = new ProcessBuilder("ffmpeg", "-hide_banner", "-devices").redirectError(ProcessBuilder.Redirect.DISCARD).start();
             String found = null;
             BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()));
             try {
@@ -160,7 +207,10 @@ public class StreamManager {
             } finally {
                 reader.close();
             }
-            p.waitFor();
+            if (!p.waitFor(15, TimeUnit.SECONDS)) {
+                p.destroyForcibly();
+                return null;
+            }
             return found;
         } catch (Exception e) {
             return null;
