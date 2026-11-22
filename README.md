@@ -1,5 +1,27 @@
 # TelloDroneJavaConnect
 
+## Version Python (menu terminal, vue live, captures)
+
+Le script `drone_menu.py` reprend tout le pilotage du drone en Python (fonctionne avec OpenCV, sans ffmpeg externe) :
+
+1. Connecte-toi au Wi-Fi du drone (192.168.10.1), puis lance :
+
+```
+python drone_menu.py
+```
+
+2. Menu dans le terminal :
+   - `1` : entrer des commandes (décollage, avancer/monter/pivoter...), puis les exécuter immédiatement ou les sauvegarder
+   - `2` : créer un nouveau chemin (même construction, sauvegardé sous un nom dans `paths/`)
+   - `3` : charger un chemin déjà créé, puis choisir de le lancer ou non
+   - `0` : quitter (atterrissement et `streamoff` automatiques)
+
+La fenêtre vidéo s'ouvre dès la connexion et une capture jpg est sauvée toutes les 5 s dans
+`grabbedImages/`. Un keep-alive (`speed?`) est envoyé toutes les 5 s en vol pour éviter
+l'atterrissage automatique du Tello après 15 s sans commande (pendant les `wait` longs).
+
+Prérequis : `pip install opencv-python` (testé avec Anaconda / Python 3).
+
 ## :warning: queue system is not fully tested yet!
 At the moment the queue is working but things like
 
