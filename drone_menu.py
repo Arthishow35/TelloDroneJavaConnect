@@ -6,10 +6,11 @@ import time
 
 import cv2
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TELLO_ADDRESS = ("192.168.10.1", 8889)
 VIDEO_URL = "udp://0.0.0.0:11111"
-CAPTURE_FOLDER = "grabbedImages"
-PATHS_FOLDER = "paths"
+CAPTURE_FOLDER = os.path.join(BASE_DIR, "grabbedImages")
+PATHS_FOLDER = os.path.join(BASE_DIR, "paths")
 CAPTURE_INTERVAL = 5
 DEFAULT_TIMEOUT = 7
 MANEUVER_TIMEOUT = 30
@@ -58,6 +59,7 @@ class Drone:
     def __init__(self, simulation=False):
         self.simulation = simulation
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.bind(("", 9000))
         self.verrou = threading.Lock()
 
@@ -275,6 +277,8 @@ def executer(drone, commandes):
 def main():
     print("=== Tello Drone - Pilotage en terminal ===")
     print("Assure-toi d'être connecté au Wi-Fi du drone (192.168.10.1).")
+    print(f"Captures  : {CAPTURE_FOLDER}")
+    print(f"Chemins   : {PATHS_FOLDER}")
     drone = Drone(False)
     if not drone.connecter():
         print("Impossible de joindre le drone : les commandes seront simulées (aucun envoi).")
@@ -341,4 +345,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\nInterruption clavier.")
