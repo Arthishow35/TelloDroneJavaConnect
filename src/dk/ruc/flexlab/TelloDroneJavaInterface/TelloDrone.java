@@ -70,6 +70,7 @@ public class TelloDrone {
             //System.out.println(receiveMessage());
             if (ok()) {
                 isConnected = true;
+                socket.setSoTimeout(30000);
                 log("Succesfully connected to the drone");
                 return true;
 
