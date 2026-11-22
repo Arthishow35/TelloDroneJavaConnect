@@ -60,6 +60,7 @@ public class Main {
         }
 
         Main app = new Main(drone, simulation);
+        Runtime.getRuntime().addShutdownHook(new Thread(app.streamManager::stop));
         app.streamManager.start();
         try {
             app.mainMenu();
